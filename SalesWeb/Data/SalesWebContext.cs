@@ -16,5 +16,9 @@ namespace SalesWeb.Data
         }
 
         public DbSet<SalesWebMVC.Models.Entities.Department> Department { get; set; }
+
+        public DbSet<SalesWebMVC.Models.Entities.Seller> Seller { get; set; }
+
+        public DbSet<SalesWebMVC.Models.Entities.SalesRecord> SalesRecord { get; set; }
     }
 }
