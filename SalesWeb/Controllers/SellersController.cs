@@ -15,10 +15,12 @@ namespace SalesWeb.Controllers
     public class SellersController : Controller
     {
         private readonly SellerService _sellerService;
+        private readonly ILogger _logger;
 
-        public SellersController(SellerService sellerService)
+        public SellersController(SellerService sellerService, ILogger<SellersController> logger)
         {
             _sellerService = sellerService;
+            _logger = logger;
         }
 
         // GET: Sellers
@@ -83,17 +85,17 @@ namespace SalesWeb.Controllers
         //// GET: Sellers/Edit/5
         //public async Task<IActionResult> Edit(int? id)
         //{
-        //    if (id == null)
-        //    {
-        //        return NotFound();
-        //    }
+            //if (id == null)
+            //{
+            //    return NotFound();
+            //}
 
-        //    var seller = await _context.Seller.FindAsync(id);
-        //    if (seller == null)
-        //    {
-        //        return NotFound();
-        //    }
-        //    return View(seller);
+            //var seller = await _context.Seller.FindAsync(id);
+            //if (seller == null)
+            //{
+            //    return NotFound();
+            //}
+            //return View(seller);
         //}
 
         //// POST: Sellers/Edit/5

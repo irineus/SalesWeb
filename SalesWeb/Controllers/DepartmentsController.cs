@@ -14,15 +14,18 @@ namespace SalesWeb.Controllers
     public class DepartmentsController : Controller
     {
         private readonly SalesWebContext _context;
+        private readonly ILogger _logger;
 
-        public DepartmentsController(SalesWebContext context)
+        public DepartmentsController(SalesWebContext context, ILogger<DepartmentsController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         // GET: Departments
         public async Task<IActionResult> Index()
         {
+            _logger.LogTrace("Browsing all departments.");
             return View(await _context.Department.ToListAsync());
         }
 
@@ -33,7 +36,7 @@ namespace SalesWeb.Controllers
             {
                 return NotFound();
             }
-
+            
             var department = await _context.Department
                 .FirstOrDefaultAsync(m => m.Id == id);
             if (department == null)
