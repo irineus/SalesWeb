@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SalesWeb.Data;
-using SalesWebMVC.Models.Entities;
+using SalesWeb.Models.Entities;
 
 namespace SalesWeb.Controllers
 {

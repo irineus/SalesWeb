@@ -1,10 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿#nullable disable
+using Microsoft.EntityFrameworkCore;
 using SalesWeb.Data;
-using SalesWebMVC.Models.Entities;
+using SalesWeb.Models.Entities;
+using SalesWeb.Services.Exceptions;
 
 namespace SalesWeb.Services
 {
-    public class SellerService : DbContext
+    public class SellerService
     {
         private readonly SalesWebContext _context;
 
@@ -13,9 +15,50 @@ namespace SalesWeb.Services
             _context = context;
         }
 
-        public List<Seller> FindAll()
+        public async Task<List<Seller>> FindAllAsync()
         {         
-            return _context.Seller.ToList();
+            return await _context.Seller.ToListAsync();
+        }
+
+        public async Task InsertAsync(Seller obj)
+        {
+            _context.Add(obj);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<Seller> FindByIdAsync(int id) 
+        {
+            return await _context.Seller.Include(obj => obj.Department).FirstOrDefaultAsync(x => x.Id == id);
+        }
+
+        public async Task RemoveAsync(int id)
+        {
+            try
+            {
+                var obj = await _context.Seller.FindAsync(id);
+                _context.Seller.Remove(obj);
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException e)
+            {
+                throw new IntegrityException(e.Message);
+            }
+        }
+
+        public async Task UpdateAsync(Seller obj)
+        {
+            var hasAny = await _context.Seller.AnyAsync(x => x.Id == obj.Id);
+            if (!hasAny)
+                throw new NotFoundException($"Seller Id {obj.Id} not found for update.");
+            try
+            {
+                _context.Update(obj);
+                await _context.SaveChangesAsync();
+            }
+            catch (DbConcurrencyException e) 
+            {
+                throw new DbConcurrencyException(e.Message);
+            }
         }
     }
 }

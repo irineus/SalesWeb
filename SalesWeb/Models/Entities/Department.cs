@@ -1,4 +1,5 @@
-﻿namespace SalesWebMVC.Models.Entities
+﻿#nullable disable
+namespace SalesWeb.Models.Entities
 {
     public class Department
     {

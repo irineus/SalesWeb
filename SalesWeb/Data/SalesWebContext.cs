@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using SalesWebMVC.Models.Entities;
+using SalesWeb.Models.Entities;
 
 namespace SalesWeb.Data
 {
@@ -15,10 +15,10 @@ namespace SalesWeb.Data
         {
         }
 
-        public DbSet<SalesWebMVC.Models.Entities.Department> Department { get; set; }
+        public DbSet<SalesWeb.Models.Entities.Department> Department { get; set; }
 
-        public DbSet<SalesWebMVC.Models.Entities.Seller> Seller { get; set; }
+        public DbSet<SalesWeb.Models.Entities.Seller> Seller { get; set; }
 
-        public DbSet<SalesWebMVC.Models.Entities.SalesRecord> SalesRecord { get; set; }
+        public DbSet<SalesWeb.Models.Entities.SalesRecord> SalesRecord { get; set; }
     }
 }

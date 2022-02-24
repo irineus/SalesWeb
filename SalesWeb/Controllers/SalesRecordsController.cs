@@ -1,53 +1,94 @@
 ﻿#nullable disable
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using SalesWeb.Data;
-using SalesWebMVC.Models.Entities;
+using SalesWeb.Models.Entities;
+using SalesWeb.Models.Enums;
+using SalesWeb.Models.ViewModels;
+using SalesWeb.Services;
+using SalesWeb.Services.Exceptions;
+using System.Diagnostics;
 
 namespace SalesWeb.Controllers
 {
     public class SalesRecordsController : Controller
     {
-        private readonly SalesWebContext _context;
+        private readonly SalesRecordService _salesRecordService;
+        private readonly SellerService _sellerService;
+        private readonly ILogger _logger;
 
-        public SalesRecordsController(SalesWebContext context)
+        public SalesRecordsController(SalesRecordService salesRecordService, SellerService sellerService)
         {
-            _context = context;
+            _salesRecordService = salesRecordService;
+            _sellerService = sellerService;
         }
 
         // GET: SalesRecords
-        public async Task<IActionResult> Index()
+        public IActionResult Index()
         {
-            return View(await _context.SalesRecord.ToListAsync());
+            return View();
         }
+
+        public async Task<IActionResult> SimpleSearch(DateTime? minDate, DateTime? maxDate)
+        {
+            if (!minDate.HasValue)
+            {
+                minDate = new DateTime(DateTime.Now.Year, 1, 1);
+            }
+            if (!maxDate.HasValue)
+            {
+                maxDate = DateTime.Now;
+            }
+            ViewData["minDate"] = minDate.Value.ToString("yyyy-MM-dd");
+            ViewData["maxDate"] = maxDate.Value.ToString("yyyy-MM-dd");
+            var result = await _salesRecordService.FindByDateAsync(minDate, maxDate);
+            return View(result);
+        }
+
+        public async Task<IActionResult> GroupingSearch(DateTime? minDate, DateTime? maxDate)
+        {
+            if (!minDate.HasValue)
+            {
+                minDate = new DateTime(DateTime.Now.Year, 1, 1);
+            }
+            if (!maxDate.HasValue)
+            {
+                maxDate = DateTime.Now;
+            }
+            ViewData["minDate"] = minDate.Value.ToString("yyyy-MM-dd");
+            ViewData["maxDate"] = maxDate.Value.ToString("yyyy-MM-dd");
+            var result = await _salesRecordService.FindByDateGroupingAsync(minDate, maxDate);
+            return View(result);
+        }
+
+        //// GET: SalesRecords
+        //public async Task<IActionResult> Index()
+        //{
+        //    return View(await _context.SalesRecord.ToListAsync());
+        //}
 
         // GET: SalesRecords/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
             {
-                return NotFound();
+                return RedirectToAction(nameof(Error), new { message = "Id can't be null for details." });
             }
 
-            var salesRecord = await _context.SalesRecord
-                .FirstOrDefaultAsync(m => m.Id == id);
+            var salesRecord = await _salesRecordService.FindByIdAsync(id.Value);
             if (salesRecord == null)
             {
-                return NotFound();
+                return RedirectToAction(nameof(Error), new { message = $"Sale of Id {id} not found for details." });
             }
 
             return View(salesRecord);
         }
 
         // GET: SalesRecords/Create
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
-            return View();
+            var sellers = await _sellerService.FindAllAsync();
+            var salesStatusList = _salesRecordService.SaleSatatusList();
+            var viewModel = new SalesRecordFormViewModel { Sellers = sellers, StatusList = salesStatusList };
+            return View(viewModel);
         }
 
         // POST: SalesRecords/Create
@@ -55,15 +96,17 @@ namespace SalesWeb.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Id,Date,Amount,Status")] SalesRecord salesRecord)
+        public async Task<IActionResult> Create(SalesRecord salesRecord)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                _context.Add(salesRecord);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                var sellers = await _sellerService.FindAllAsync();
+                var salesStatusList = _salesRecordService.SaleSatatusList();
+                var viewModel = new SalesRecordFormViewModel { Sellers = sellers, StatusList = salesStatusList };
+                return View(viewModel);
             }
-            return View(salesRecord);
+            await _salesRecordService.InsertAsync(salesRecord);
+            return RedirectToAction(nameof(Index));
         }
 
         // GET: SalesRecords/Edit/5
@@ -71,15 +114,18 @@ namespace SalesWeb.Controllers
         {
             if (id == null)
             {
-                return NotFound();
+                return RedirectToAction(nameof(Error), new { message = "Id can't be null for edit." });
             }
-
-            var salesRecord = await _context.SalesRecord.FindAsync(id);
+            var salesRecord = await _salesRecordService.FindByIdAsync(id.Value);
             if (salesRecord == null)
             {
-                return NotFound();
+                return RedirectToAction(nameof(Error), new { message = $"Sale Record of Id {id} not found edit." });
             }
-            return View(salesRecord);
+
+            List<Seller> sellers = await _sellerService.FindAllAsync();
+            List<SaleStatus> salesStatusList = _salesRecordService.SaleSatatusList();
+            SalesRecordFormViewModel viewModel = new SalesRecordFormViewModel { SalesRecord = salesRecord, Sellers = sellers, StatusList = salesStatusList };
+            return View(viewModel);
         }
 
         // POST: SalesRecords/Edit/5
@@ -87,52 +133,49 @@ namespace SalesWeb.Controllers
         // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("Id,Date,Amount,Status")] SalesRecord salesRecord)
+        public async Task<IActionResult> Edit(int id, SalesRecord salesRecord)
         {
-            if (id != salesRecord.Id)
+            if (!ModelState.IsValid)
             {
-                return NotFound();
+                var sellers = await _sellerService.FindAllAsync();
+                var salesStatusList = _salesRecordService.SaleSatatusList();
+                var viewModel = new SalesRecordFormViewModel { SalesRecord = salesRecord, Sellers = sellers, StatusList = salesStatusList };
+                return View(viewModel);
             }
 
-            if (ModelState.IsValid)
+            if (id != salesRecord.Id)
             {
-                try
-                {
-                    _context.Update(salesRecord);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!SalesRecordExists(salesRecord.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+                return RedirectToAction(nameof(Error), new { message = $"Sale Record of Id {id} is not the same as the one posted ({salesRecord.Id})." });
+            }
+
+            try
+            {
+                await _salesRecordService.UpdateAsync(salesRecord);
                 return RedirectToAction(nameof(Index));
             }
-            return View(salesRecord);
+            catch (NotFoundException e)
+            {
+                return RedirectToAction(nameof(Error), new { message = $"Sales Record of Id {id} not found for update. ({e.Message})" });
+            }
+            catch (DbConcurrencyException e)
+            {
+                return RedirectToAction(nameof(Error), new { message = $"Sales Record of Id {id} is being update by another user. ({e.Message})" });
+            }
+            catch (Exception ex)
+            {
+                return RedirectToAction(nameof(Error), new { message = $"There was a problema editing Sales Record {id}: {ex.Message}" });
+            }
         }
 
         // GET: SalesRecords/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
-            {
-                return NotFound();
-            }
-
-            var salesRecord = await _context.SalesRecord
-                .FirstOrDefaultAsync(m => m.Id == id);
-            if (salesRecord == null)
-            {
-                return NotFound();
-            }
-
-            return View(salesRecord);
+                return RedirectToAction(nameof(Error), new { message = "Id can't be null for delete." });
+            var obj = await _salesRecordService.FindByIdAsync(id.Value);
+            if (obj == null)
+                return RedirectToAction(nameof(Error), new { message = $"Sales Record of Id {id} not found for delete." });
+            return View(obj);
         }
 
         // POST: SalesRecords/Delete/5
@@ -140,15 +183,30 @@ namespace SalesWeb.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var salesRecord = await _context.SalesRecord.FindAsync(id);
-            _context.SalesRecord.Remove(salesRecord);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            try
+            {
+                await _salesRecordService.RemoveAsync(id);
+                return RedirectToAction(nameof(Index));
+            }
+            catch (IntegrityException e)
+            {
+                return RedirectToAction(nameof(Error), new { message = $"Sales Records already have an Integrity Constraint and couldn't be deleted. Error message: {e.Message}" });
+            }
         }
 
         private bool SalesRecordExists(int id)
         {
-            return _context.SalesRecord.Any(e => e.Id == id);
+            return _salesRecordService.Any(id);
+        }
+
+        public IActionResult Error(string message)
+        {
+            var viewModel = new ErrorViewModel
+            {
+                Message = message,
+                RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+            };
+            return View(viewModel);
         }
     }
 }
