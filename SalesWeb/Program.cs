@@ -6,6 +6,7 @@ using Azure.Security.KeyVault.Secrets;
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using System.Globalization;
 using Microsoft.AspNetCore.Localization;
+using Microsoft.Extensions.Azure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,7 @@ builder.Services.AddDbContext<SalesWebContext>(options =>
 builder.Services.AddScoped<SellerService>();
 builder.Services.AddScoped<DepartmentService>();
 builder.Services.AddScoped<SalesRecordService>();
+builder.Services.AddScoped<SellerImgStorageService>();
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();

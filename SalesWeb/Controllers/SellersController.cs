@@ -5,6 +5,7 @@ using SalesWeb.Services;
 using SalesWeb.Models.Entities;
 using SalesWeb.Services.Exceptions;
 using System.Diagnostics;
+using SalesWeb.Models.Interfaces;
 
 namespace SalesWeb.Controllers
 {
@@ -12,13 +13,16 @@ namespace SalesWeb.Controllers
     {
         private readonly SellerService _sellerService;
         private readonly DepartmentService _departmentService;
+        private readonly SellerImgStorageService _sellerImgStorage;
         private readonly ILogger _logger;
 
-        public SellersController(SellerService sellerService, DepartmentService departmentService, ILogger<SellersController> logger)
+        public SellersController(SellerService sellerService, DepartmentService departmentService, 
+            ILogger<SellersController> logger, SellerImgStorageService sellerImgStorage)
         {
             _sellerService = sellerService;
             _departmentService = departmentService;
             _logger = logger;
+            _sellerImgStorage = sellerImgStorage;
         }
 
         // GET: Sellers
@@ -86,6 +90,13 @@ namespace SalesWeb.Controllers
             var obj = await _sellerService.FindByIdAsync(id.Value);
             if (obj == null)
                 return RedirectToAction(nameof(Error), new { message = $"Seller of Id {id} not found for details." });
+
+            string fileName = id.Value + ".jpg";
+            string workingDirectory = Environment.CurrentDirectory;
+            string filePath = workingDirectory + "\\wwwroot\\Pictures\\Sellers";
+            _sellerImgStorage.DownloadFile(fileName, filePath);
+
+            ViewData["SellerImgSrc"] = "../../Pictures/Sellers/" +  fileName;
             return View(obj);
         }
 
