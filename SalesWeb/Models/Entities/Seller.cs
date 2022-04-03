@@ -53,16 +53,37 @@ namespace SalesWeb.Models.Entities
 
         public void AddSales(SalesRecord sr)
         {
+            if (sr == null)
+            {
+                throw new ArgumentNullException(nameof(sr));
+            }
             Sales.Add(sr);
         }
 
         public void RemoveSales(SalesRecord sr)
         {
+            if (sr == null)
+            {
+                throw new ArgumentNullException(nameof(sr));
+            }
+            if (!Sales.Contains(sr))
+            {
+                throw new KeyNotFoundException(nameof(sr));
+            }
             Sales.Remove(sr);
+        }
+
+        public double TotalBilledSales(DateTime initial, DateTime final)
+        {
+            if (initial > final)
+                throw new ArgumentOutOfRangeException(nameof(initial), "Initial date is ahead of final date.");
+            return Sales.Where(sr => sr.Date >= initial && sr.Date <= final).Where(sr => sr.Status == Enums.SaleStatus.BILLED).Sum(sr => sr.Amount);
         }
 
         public double TotalSales(DateTime initial, DateTime final)
         {
+            if (initial > final)
+                throw new ArgumentOutOfRangeException(nameof(initial), "Initial date is ahead of final date.");
             return Sales.Where(sr => sr.Date >= initial && sr.Date <= final).Sum(sr => sr.Amount);
         }
     }

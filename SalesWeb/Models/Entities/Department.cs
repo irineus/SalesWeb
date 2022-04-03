@@ -18,12 +18,23 @@ namespace SalesWeb.Models.Entities
         }
 
         public void AddSeller(Seller seller) 
-        { 
+        {
+            if (seller == null)
+                throw new ArgumentNullException(nameof(seller));
             Sellers.Add(seller);
+        }
+
+        public double TotalBilledSales(DateTime initial, DateTime final)
+        {
+            if (initial > final)
+                throw new ArgumentOutOfRangeException(nameof(initial), "Initial date is ahead of final date.");
+            return Sellers.Sum(s => s.TotalBilledSales(initial, final));
         }
 
         public double TotalSales(DateTime initial, DateTime final)
         {
+            if (initial > final)
+                throw new ArgumentOutOfRangeException(nameof(initial), "Initial date is ahead of final date.");
             return Sellers.Sum(s => s.TotalSales(initial, final));
         }
     }

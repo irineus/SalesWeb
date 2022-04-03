@@ -12,7 +12,9 @@
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AZURE_USERNAME": "irineus@gmail.com",
+        "VaultUri": "https://irineuazurekeyvault.vault.azure.net/"
       },
       "applicationUrl": "https://localhost:7037;http://localhost:5037",
       "dotnetRunMessages": true
@@ -21,7 +23,9 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "AZURE_USERNAME": "irineus@gmail.com",
+        "VaultUri": "https://irineuazurekeyvault.vault.azure.net/"
       }
     }
   }

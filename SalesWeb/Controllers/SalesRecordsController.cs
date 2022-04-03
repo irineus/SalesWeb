@@ -15,15 +15,17 @@ namespace SalesWeb.Controllers
         private readonly SellerService _sellerService;
         private readonly ILogger _logger;
 
-        public SalesRecordsController(SalesRecordService salesRecordService, SellerService sellerService)
+        public SalesRecordsController(SalesRecordService salesRecordService, SellerService sellerService, ILogger<SellerService> logger)
         {
             _salesRecordService = salesRecordService;
             _sellerService = sellerService;
+            _logger = logger;
         }
 
         // GET: SalesRecords
         public IActionResult Index()
         {
+            _logger.LogInformation("Carregando página inicial");
             return View();
         }
 

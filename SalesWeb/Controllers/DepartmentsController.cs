@@ -1,24 +1,28 @@
 ﻿#nullable disable
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using SalesWeb.Data;
 using SalesWeb.Models.Entities;
+using SalesWeb.Models.ViewModels;
+using SalesWeb.Services;
+using SalesWeb.Services.Exceptions;
+using System.Diagnostics;
 
 namespace SalesWeb.Controllers
 {
     public class DepartmentsController : Controller
     {
         private readonly SalesWebContext _context;
+        private readonly DepartmentService _departmentService;
+        private readonly IConfiguration _configuration;
         private readonly ILogger _logger;
 
-        public DepartmentsController(SalesWebContext context, ILogger<DepartmentsController> logger)
+        public DepartmentsController(SalesWebContext context, DepartmentService departmentService, IConfiguration configuration,
+            ILogger<DepartmentsController> logger)
         {
             _context = context;
+            _departmentService = departmentService;
+            _configuration = configuration;
             _logger = logger;
         }
 
@@ -26,22 +30,18 @@ namespace SalesWeb.Controllers
         public async Task<IActionResult> Index()
         {
             _logger.LogTrace("Browsing all departments.");
-            return View(await _context.Department.ToListAsync());
+            return View(await _departmentService.FindAllAsync());
         }
 
         // GET: Departments/Details/5
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null)
-            {
-                return NotFound();
-            }
-            
-            var department = await _context.Department
-                .FirstOrDefaultAsync(m => m.Id == id);
+                return RedirectToAction(nameof(Error), new { message = "Id can't be null for details." });
+            var department = await _departmentService.FindByIdAsync(id.Value);
             if (department == null)
             {
-                return NotFound();
+                return RedirectToAction(nameof(Error), new { message = $"Department of Id {id} not found for details." });
             }
 
             return View(department);
@@ -60,28 +60,22 @@ namespace SalesWeb.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create([Bind("Id,Name")] Department department)
         {
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
-                _context.Add(department);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
+                return View(department);
             }
-            return View(department);
+            await _departmentService.InsertAsync(department);
+            return RedirectToAction(nameof(Index));            
         }
 
         // GET: Departments/Edit/5
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null)
-            {
-                return NotFound();
-            }
-
-            var department = await _context.Department.FindAsync(id);
+                return RedirectToAction(nameof(Error), new { message = "Id can't be null for edit." });
+            var department = await _departmentService.FindByIdAsync(id.Value);
             if (department == null)
-            {
-                return NotFound();
-            }
+                return RedirectToAction(nameof(Error), new { message = $"Department of Id {id} not found edit." });
             return View(department);
         }
 
@@ -92,49 +86,39 @@ namespace SalesWeb.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, [Bind("Id,Name")] Department department)
         {
+            if (!ModelState.IsValid)
+                return View(department);
             if (id != department.Id)
-            {
-                return NotFound();
-            }
+                return RedirectToAction(nameof(Error), new { message = $"Department of Id {id} is not the same as the one posted ({department.Id})." });
 
-            if (ModelState.IsValid)
+            try
             {
-                try
-                {
-                    _context.Update(department);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!DepartmentExists(department.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+                await _departmentService.UpdateAsync(department);
                 return RedirectToAction(nameof(Index));
             }
-            return View(department);
+            catch (NotFoundException e)
+            {
+                return RedirectToAction(nameof(Error), new { message = $"Department of Id {id} not found for update. ({e.Message})" });
+            }
+            catch (DbConcurrencyException e)
+            {
+                return RedirectToAction(nameof(Error), new { message = $"Department of Id {id} is being update by another user. ({e.Message})" });
+            }
+            catch (Exception ex)
+            {
+                return RedirectToAction(nameof(Error), new { message = $"There was a problem editing Department {id}: {ex.Message}" });
+            }
+
         }
 
         // GET: Departments/Delete/5
         public async Task<IActionResult> Delete(int? id)
         {
             if (id == null)
-            {
-                return NotFound();
-            }
-
-            var department = await _context.Department
-                .FirstOrDefaultAsync(m => m.Id == id);
+                RedirectToAction(nameof(Error), new { message = "Id can't be null for delete." });
+            var department = await _departmentService.FindByIdAsync(id.Value);
             if (department == null)
-            {
-                return NotFound();
-            }
-
+                return RedirectToAction(nameof(Error), new { message = $"Department of Id {id} not found for delete." });
             return View(department);
         }
 
@@ -143,15 +127,27 @@ namespace SalesWeb.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var department = await _context.Department.FindAsync(id);
-            _context.Department.Remove(department);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            try
+            {
+                await _departmentService.RemoveAsync(id);
+                return RedirectToAction(nameof(Index));
+            }
+            catch (IntegrityException e)
+            {
+                return RedirectToAction(nameof(Error), new { message = $"Department already have Sellers and couldn't be deleted. Error message: {e.Message}" });
+            }
         }
 
-        private bool DepartmentExists(int id)
+
+        public IActionResult Error(string message)
         {
-            return _context.Department.Any(e => e.Id == id);
+            var viewModel = new ErrorViewModel
+            {
+                Message = message,
+                RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier
+            };
+            return View(viewModel);
         }
+
     }
 }
